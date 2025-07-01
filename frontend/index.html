@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Catálogo de Livros - Login/Registro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-[#F0F9FF] min-h-screen flex items-center justify-center p-4">
+    <div id="root" class="w-full max-w-md"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      const API_BASE_URL = "http://127.0.0.1:5000"; // URL do seu backend Flask
+
+      function App() {
+        const [isLoginView, setIsLoginView] = useState(true);
+        const [message, setMessage] = useState("");
+        const [isLoggedIn, setIsLoggedIn] = useState(false);
+        const [username, setUsername] = useState(""); // Armazenar o username para exibir
+
+        useEffect(() => {
+          const token = localStorage.getItem("token");
+          const storedUsername = localStorage.getItem("username");
+          if (token && storedUsername) {
+            setIsLoggedIn(true);
+            setUsername(storedUsername);
+          }
+        }, []);
+
+        const handleAuthSuccess = (token, user) => {
+          localStorage.setItem("token", token);
+          localStorage.setItem("username", user);
+          setIsLoggedIn(true);
+          setUsername(user);
+          setMessage("Login/Registro realizado com sucesso!");
+        };
+
+        const handleLogout = () => {
+          localStorage.removeItem("token");
+          localStorage.removeItem("username");
+          setIsLoggedIn(false);
+          setMessage("Sessão encerrada.");
+        };
+
+        return (
+          <div class="bg-white p-8 rounded-2xl shadow-xl w-full">
+            <h1 class="text-3xl font-bold text-[#004AAD] text-center mb-6">
+              Catálogo de Livros
+            </h1>
+            {message && (
+              <div class="mb-4 p-3 rounded-lg text-center text-sm font-medium bg-[#CAF0F8] text-[#0077B6]">
+                {message}
+              </div>
+            )}
+
+            {isLoggedIn ? (
+              <Dashboard
+                username={username}
+                onLogout={handleLogout}
+                setMessage={setMessage}
+              />
+            ) : (
+              <div>
+                <div class="flex justify-center mb-6">
+                  <button
+                    onClick={() => setIsLoginView(true)}
+                    class={`px-6 py-2 rounded-l-lg text-lg font-semibold transition-colors duration-200 ${
+                      isLoginView
+                        ? "bg-[#0077B6] text-white"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    onClick={() => setIsLoginView(false)}
+                    class={`px-6 py-2 rounded-r-lg text-lg font-semibold transition-colors duration-200 ${
+                      !isLoginView
+                        ? "bg-[#0077B6] text-white"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    Registrar
+                  </button>
+                </div>
+
+                {isLoginView ? (
+                  <LoginForm
+                    onAuthSuccess={handleAuthSuccess}
+                    setMessage={setMessage}
+                  />
+                ) : (
+                  <RegisterForm
+                    onAuthSuccess={handleAuthSuccess}
+                    setMessage={setMessage}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function LoginForm({ onAuthSuccess, setMessage }) {
+        const [username, setUsername] = useState("");
+        const [password, setPassword] = useState("");
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          setMessage("");
+          try {
+            const response = await fetch(`${API_BASE_URL}/login`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username, password }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+              onAuthSuccess(data.token, username); // Passa o username real
+            } else {
+              setMessage(
+                `Erro ao entrar: ${
+                  data.mensagem || "Verifique suas credenciais."
+                }`
+              );
+            }
+          } catch (error) {
+            setMessage("Erro de conexão. Verifique o backend.");
+          }
+        };
+
+        return (
+          <form onSubmit={handleSubmit} class="space-y-4">
+            <div>
+              <label
+                for="login-username"
+                class="block text-gray-700 text-sm font-semibold mb-2"
+              >
+                Usuário:
+              </label>
+              <input
+                type="text"
+                id="login-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                required
+              />
+            </div>
+            <div>
+              <label
+                for="login-password"
+                class="block text-gray-700 text-sm font-semibold mb-2"
+              >
+                Senha:
+              </label>
+              <input
+                type="password"
+                id="login-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              class="w-full bg-[#004AAD] text-white p-3 rounded-lg font-bold text-lg hover:bg-[#0077B6] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#0096C7]"
+            >
+              Entrar
+            </button>
+          </form>
+        );
+      }
+
+      function RegisterForm({ onAuthSuccess, setMessage }) {
+        const [username, setUsername] = useState("");
+        const [password, setPassword] = useState("");
+        const [email, setEmail] = useState("");
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          setMessage("");
+          try {
+            const response = await fetch(`${API_BASE_URL}/registrar`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username, password, email }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+              // Após o registro bem-sucedido, tente fazer login automaticamente
+              const loginResponse = await fetch(`${API_BASE_URL}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password }),
+              });
+              const loginData = await loginResponse.json();
+              if (loginResponse.ok) {
+                onAuthSuccess(loginData.token, username); // Passa o username real
+              } else {
+                setMessage(
+                  `Erro ao fazer login automático: ${
+                    loginData.mensagem || "Tente fazer login manualmente."
+                  }`
+                );
+              }
+            } else {
+              setMessage(
+                `Erro ao registrar: ${data.mensagem || "Tente novamente."}`
+              );
+            }
+          } catch (error) {
+            setMessage("Erro de conexão. Verifique o backend.");
+          }
+        };
+
+        return (
+          <form onSubmit={handleSubmit} class="space-y-4">
+            <div>
+              <label
+                for="register-username"
+                class="block text-gray-700 text-sm font-semibold mb-2"
+              >
+                Usuário:
+              </label>
+              <input
+                type="text"
+                id="register-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                required
+              />
+            </div>
+            <div>
+              <label
+                for="register-password"
+                class="block text-gray-700 text-sm font-semibold mb-2"
+              >
+                Senha:
+              </label>
+              <input
+                type="password"
+                id="register-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                required
+              />
+            </div>
+            <div>
+              <label
+                for="register-email"
+                class="block text-gray-700 text-sm font-semibold mb-2"
+              >
+                Email (Opcional):
+              </label>
+              <input
+                type="email"
+                id="register-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+              />
+            </div>
+            <button
+              type="submit"
+              class="w-full bg-[#004AAD] text-white p-3 rounded-lg font-bold text-lg hover:bg-[#0077B6] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#0096C7]"
+            >
+              Registrar
+            </button>
+          </form>
+        );
+      }
+
+      function Dashboard({ username, onLogout, setMessage }) {
+        const [books, setBooks] = useState([]);
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState("");
+        const [showAddBookForm, setShowAddBookForm] = useState(false);
+
+        const fetchBooks = async () => {
+          setLoading(true);
+          setError("");
+          try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`${API_BASE_URL}/livros`, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            });
+            const data = await response.json();
+            if (response.ok) {
+              setBooks(data.livros);
+            } else {
+              setError(
+                `Erro ao carregar livros: ${data.mensagem || "Desconhecido"}`
+              );
+            }
+          } catch (err) {
+            setError("Erro de conexão ao buscar livros. Verifique o backend.");
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        const handleBookAdded = () => {
+          setMessage("Livro adicionado com sucesso!");
+          setShowAddBookForm(false); // Esconde o formulário após adicionar
+          fetchBooks(); // Recarrega a lista de livros
+        };
+
+        const getSearchUrl = (title, authors) => {
+          const query = encodeURIComponent(`${title} ${authors || ""} book`);
+          return `https://www.google.com/search?q=${query}`;
+        };
+
+        return (
+          <div class="text-center">
+            <h2 class="text-2xl font-semibold text-[#0077B6] mb-4">
+              Bem-vindo, {username}!
+            </h2>
+            <p class="text-gray-600 mb-6">Gerencie seu Catálogo de Livros.</p>
+
+            <div class="flex flex-col space-y-3 mb-6">
+              <button
+                onClick={() => setShowAddBookForm(!showAddBookForm)}
+                class="bg-[#0096C7] text-white px-6 py-3 rounded-lg font-bold text-lg hover:bg-[#48CAE4] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#004AAD]"
+              >
+                {showAddBookForm
+                  ? "Ocultar Formulário"
+                  : "Adicionar Novo Livro"}
+              </button>
+              <button
+                onClick={fetchBooks}
+                class="bg-[#0077B6] text-white px-6 py-3 rounded-lg font-bold text-lg hover:bg-[#0096C7] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#004AAD]"
+              >
+                Atualizar Lista de Livros
+              </button>
+            </div>
+
+            {showAddBookForm && (
+              <AddBookForm
+                onBookAdded={handleBookAdded}
+                setMessage={setMessage}
+              />
+            )}
+
+            {loading && <p class="text-gray-500">Carregando livros...</p>}
+            {error && <p class="text-red-500">{error}</p>}
+
+            {books.length > 0 ? (
+              <div class="mt-6 text-left">
+                <h3 class="text-xl font-semibold text-[#0077B6] mb-3">
+                  Seus Livros:
+                </h3>
+                <ul class="space-y-4">
+                  {books.map((book) => (
+                    <li
+                      key={book.id}
+                      class="bg-gray-50 p-3 rounded-lg shadow-sm border border-gray-200 flex items-center space-x-4"
+                    >
+                      {book.capa_url ? (
+                        <a
+                          href={getSearchUrl(book.titulo, book.autores)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <img
+                            src={book.capa_url}
+                            alt={`Capa de ${book.titulo}`}
+                            class="w-16 h-24 object-cover rounded-md shadow-md flex-shrink-0"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src =
+                                "https://placehold.co/64x96/cccccc/333333?text=Sem+Capa";
+                            }}
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          href={getSearchUrl(book.titulo, book.autores)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <div class="w-16 h-24 bg-gray-200 rounded-md shadow-md flex items-center justify-center text-center text-xs text-gray-500 flex-shrink-0">
+                            Sem Capa
+                          </div>
+                        </a>
+                      )}
+                      <div>
+                        <a
+                          href={getSearchUrl(book.titulo, book.autores)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="font-bold text-gray-800 hover:text-[#004AAD] transition-colors duration-200"
+                        >
+                          {book.titulo}
+                        </a>
+                        <p class="text-sm text-gray-600">
+                          Autor: {book.autores}
+                        </p>
+                        <p class="text-xs text-gray-500">
+                          Gênero: {book.genero || "N/A"}
+                        </p>
+                        <p class="text-xs text-gray-500">
+                          Editora: {book.editora || "N/A"}
+                        </p>
+                        <p class="text-xs text-gray-500">ISBN: {book.isbn}</p>
+                        <p class="text-xs text-gray-500">
+                          Localização: {book.localizacao_fisica || "N/A"}
+                        </p>
+                        <p class="text-xs text-gray-500">
+                          Notas: {book.notas_pessoais || "N/A"}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              !loading &&
+              !error &&
+              !showAddBookForm && (
+                <p class="text-gray-500 mt-6">
+                  Nenhum livro encontrado. Adicione alguns!
+                </p>
+              )
+            )}
+
+            <button
+              onClick={onLogout}
+              class="mt-8 w-full bg-gray-500 text-white p-3 rounded-lg font-bold text-lg hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-700"
+            >
+              Sair
+            </button>
+          </div>
+        );
+      }
+
+      function AddBookForm({ onBookAdded, setMessage }) {
+        const [isbn, setIsbn] = useState("");
+        const [titulo, setTitulo] = useState("");
+        const [autores, setAutores] = useState("");
+        const [localizacao, setLocalizacao] = useState("");
+        const [notas, setNotas] = useState("");
+        const [genero, setGenero] = useState("");
+        const [editora, setEditora] = useState("");
+        const [anoPublicacao, setAnoPublicacao] = useState("");
+        const [numeroPaginas, setNumeroPaginas] = useState("");
+        const [idioma, setIdioma] = useState("");
+        const [capaUrl, setCapaUrl] = useState("");
+
+        const [loading, setLoading] = useState(false);
+
+        const handleSearchByIsbn = async () => {
+          if (!isbn) {
+            setMessage("Por favor, insira um ISBN para buscar.");
+            return;
+          }
+          setLoading(true);
+          setMessage("");
+          // Limpa campos preenchidos anteriormente
+          setTitulo("");
+          setAutores("");
+          setGenero("");
+          setEditora("");
+          setAnoPublicacao("");
+          setNumeroPaginas("");
+          setIdioma("");
+          setCapaUrl("");
+
+          try {
+            const response = await fetch(
+              `${API_BASE_URL}/livros/buscar-isbn?isbn=${isbn}`
+            );
+            const data = await response.json();
+            if (response.ok && data.status === "sucesso" && data.livro) {
+              const bookData = data.livro;
+              setTitulo(bookData.titulo || "");
+              setAutores(bookData.autores || "");
+              setGenero(bookData.genero || "");
+              setEditora(bookData.editora || "");
+              setAnoPublicacao(bookData.ano_publicacao || "");
+              setNumeroPaginas(bookData.numero_paginas || "");
+              setIdioma(bookData.idioma || "");
+              setCapaUrl(bookData.capa_url || "");
+              setMessage("Dados do livro pré-preenchidos!");
+            } else {
+              setMessage(
+                data.mensagem ||
+                  "Livro não encontrado pela busca. Preencha manualmente."
+              );
+            }
+          } catch (error) {
+            setMessage(
+              "Erro ao buscar ISBN. Verifique a conexão ou preencha manualmente."
+            );
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          setMessage("");
+          setLoading(true);
+          const token = localStorage.getItem("token");
+
+          const bookData = {
+            isbn,
+            titulo,
+            autores,
+            localizacao_fisica: localizacao,
+            notas_pessoais: notas,
+            genero,
+            editora,
+            ano_publicacao: anoPublicacao ? parseInt(anoPublicacao) : null,
+            numero_paginas: numeroPaginas ? parseInt(numeroPaginas) : null,
+            idioma,
+            capa_url: capaUrl,
+          };
+
+          try {
+            const response = await fetch(`${API_BASE_URL}/livros`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(bookData),
+            });
+            const data = await response.json();
+            if (response.ok) {
+              onBookAdded();
+              setIsbn("");
+              setTitulo("");
+              setAutores("");
+              setLocalizacao("");
+              setNotas("");
+              setGenero("");
+              setEditora("");
+              setAnoPublicacao("");
+              setNumeroPaginas("");
+              setIdioma("");
+              setCapaUrl("");
+            } else {
+              setMessage(
+                `Erro ao adicionar livro: ${
+                  data.mensagem || "Verifique os dados."
+                }`
+              );
+            }
+          } catch (error) {
+            setMessage(
+              "Erro de conexão ao adicionar livro. Verifique o backend."
+            );
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        return (
+          <div class="bg-[#e0f2fe] p-6 rounded-lg shadow-inner mb-6">
+            <h3 class="text-xl font-bold text-[#004AAD] mb-4 text-center">
+              Adicionar Novo Livro
+            </h3>
+            <div class="mb-4 flex space-x-2">
+              <input
+                type="text"
+                placeholder="ISBN do Livro"
+                value={isbn}
+                onChange={(e) => setIsbn(e.target.value)}
+                class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+              />
+              <button
+                onClick={handleSearchByIsbn}
+                disabled={loading}
+                class="bg-[#0077B6] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#0096C7] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#004AAD]"
+              >
+                {loading ? "Buscando..." : "Buscar ISBN"}
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} class="space-y-4">
+              {capaUrl && (
+                <div class="flex justify-center mb-4">
+                  <img
+                    src={capaUrl}
+                    alt="Capa do Livro"
+                    class="max-h-48 rounded-lg shadow-md"
+                    onError={(e) => (e.target.style.display = "none")}
+                  />
+                </div>
+              )}
+              <div>
+                <label
+                  for="titulo"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Título:
+                </label>
+                <input
+                  type="text"
+                  id="titulo"
+                  value={titulo}
+                  onChange={(e) => setTitulo(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                  required
+                />
+              </div>
+              <div>
+                <label
+                  for="autores"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Autor(es):
+                </label>
+                <input
+                  type="text"
+                  id="autores"
+                  value={autores}
+                  onChange={(e) => setAutores(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                  required
+                />
+              </div>
+              <div>
+                <label
+                  for="genero"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Gênero:
+                </label>
+                <input
+                  type="text"
+                  id="genero"
+                  value={genero}
+                  onChange={(e) => setGenero(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                />
+              </div>
+              <div>
+                <label
+                  for="editora"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Editora:
+                </label>
+                <input
+                  type="text"
+                  id="editora"
+                  value={editora}
+                  onChange={(e) => setEditora(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                />
+              </div>
+              <div>
+                <label
+                  for="anoPublicacao"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Ano Publicação:
+                </label>
+                <input
+                  type="number"
+                  id="anoPublicacao"
+                  value={anoPublicacao}
+                  onChange={(e) => setAnoPublicacao(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                />
+              </div>
+              <div>
+                <label
+                  for="numeroPaginas"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Número Páginas:
+                </label>
+                <input
+                  type="number"
+                  id="numeroPaginas"
+                  value={numeroPaginas}
+                  onChange={(e) => setNumeroPaginas(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                />
+              </div>
+              <div>
+                <label
+                  for="idioma"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Idioma:
+                </label>
+                <input
+                  type="text"
+                  id="idioma"
+                  value={idioma}
+                  onChange={(e) => setIdioma(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                />
+              </div>
+              <div>
+                <label
+                  for="localizacao"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Localização Física:
+                </label>
+                <input
+                  type="text"
+                  id="localizacao"
+                  value={localizacao}
+                  onChange={(e) => setLocalizacao(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4]"
+                />
+              </div>
+              <div>
+                <label
+                  for="notas"
+                  class="block text-gray-700 text-sm font-semibold mb-2"
+                >
+                  Notas Pessoais:
+                </label>
+                <textarea
+                  id="notas"
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#48CAE4] h-24 resize-y"
+                ></textarea>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                class="w-full bg-[#004AAD] text-white p-3 rounded-lg font-bold text-lg hover:bg-[#0077B6] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#0096C7]"
+              >
+                {loading ? "Adicionando..." : "Salvar Livro"}
+              </button>
+            </form>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
